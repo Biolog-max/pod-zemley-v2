@@ -1,0 +1,53 @@
+{
+  "id": "round_01",
+  "name": "Ящик со стройки",
+  "description": "На стройке нашли старый ящик с предметами. Осмотрите их и разместите в нужных залах музея.",
+  "timeSec": 60,
+  "difficulty": 1,
+  "artifacts": [
+    {
+      "id": "coin_1kop_1812",
+      "name": "Круглый металлический предмет",
+      "traits": { "material": "медь", "weight": 6.8, "size": "25 мм", "year": 1812, "textLanguage": "русский" },
+      "zones": [
+        { "id": "obverse", "name": "Лицевая сторона", "image": "coin_1kop_1812_obverse", "description": "Двуглавый орёл, герб Российской империи. Металл зеленовато-коричневый.", "revealsTraits": ["material"] },
+        { "id": "reverse", "name": "Обратная сторона", "image": "coin_1kop_1812_reverse", "description": "Надпись «1 КОПЕЙКА» и год «1812». Текст на русском языке.", "revealsTraits": ["textLanguage"] }
+      ],
+      "correctHall": "hall_russia_19", "correctWall": "household",
+      "funFact": "Солдаты 1812 года получали жалование 1 копейку в день."
+    },
+    {
+      "id": "spoon_soldier_1812",
+      "name": "Длинный металлический предмет",
+      "traits": { "material": "олово", "weight": 45.0, "size": "180 мм", "year": 1810, "textLanguage": "" },
+      "zones": [
+        { "id": "bowl", "name": "Чашеобразная часть", "image": "spoon_soldier_1812_bowl", "description": "Овальное углубление, следы потёртости. Матовый серый металл.", "revealsTraits": ["material"] },
+        { "id": "handle", "name": "Ручка", "image": "spoon_soldier_1812_handle", "description": "Плоская, без надписей. Металл мягкий, оловянный.", "revealsTraits": [] }
+      ],
+      "correctHall": "hall_russia_19", "correctWall": "household",
+      "funFact": "В армии Кутузова каждый солдат носил ложку за голенищем сапога."
+    },
+    {
+      "id": "medal_george_1812",
+      "name": "Небольшой металлический крест",
+      "traits": { "material": "серебро", "weight": 12.5, "size": "34 мм", "year": 1813, "textLanguage": "русский" },
+      "zones": [
+        { "id": "front", "name": "Лицевая сторона", "image": "medal_george_1812_front", "description": "Изображение Св. Георгия на коне, поражающего змия. Блестящий белый металл.", "revealsTraits": ["material"] },
+        { "id": "back", "name": "Обратная сторона", "image": "medal_george_1812_back", "description": "Надпись «За службу и храбрость» и номер. Текст на русском.", "revealsTraits": ["textLanguage"] }
+      ],
+      "correctHall": "hall_russia_19", "correctWall": "documents",
+      "funFact": "За Бородинское сражение Георгиевскими крестами наградили более 6000 солдат."
+    },
+    {
+      "id": "bayonet_1808",
+      "name": "Длинный острый металлический предмет",
+      "traits": { "material": "сталь", "weight": 340.0, "size": "430 мм", "year": 1808, "textLanguage": "" },
+      "zones": [
+        { "id": "blade", "name": "Клинок", "image": "bayonet_1808_blade", "description": "Трёхгранный клинок с долами. Тёмная сталь со следами ковки.", "revealsTraits": ["material"] },
+        { "id": "socket", "name": "Втулка", "image": "bayonet_1808_socket", "description": "Цилиндрическая втулка для насаживания на ствол ружья. Без надписей.", "revealsTraits": [] }
+      ],
+      "correctHall": "hall_russia_19", "correctWall": "weapons",
+      "funFact": "Суворов говорил: «Пуля — дура, штык — молодец!»"
+    }
+  ]
+}

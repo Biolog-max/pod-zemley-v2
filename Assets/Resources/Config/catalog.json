@@ -1,0 +1,10 @@
+[
+  { "id": "coin_1kop_1812", "name": "Монета 1 копейка 1812", "traits": { "material": "медь", "weight": 6.8, "size": "25 мм", "year": 1812, "textLanguage": "русский" }, "correctHall": "hall_russia_19", "correctWall": "household" },
+  { "id": "button_regiment_1812", "name": "Пуговица мундирная 1812", "traits": { "material": "латунь", "weight": 4.2, "size": "22 мм", "year": 1812, "textLanguage": "русский" }, "correctHall": "hall_russia_19", "correctWall": "household" },
+  { "id": "spoon_soldier_1812", "name": "Ложка солдатская", "traits": { "material": "олово", "weight": 45.0, "size": "180 мм", "year": 1810, "textLanguage": "" }, "correctHall": "hall_russia_19", "correctWall": "household" },
+  { "id": "bayonet_1808", "name": "Штык трёхгранный 1808", "traits": { "material": "сталь", "weight": 340.0, "size": "430 мм", "year": 1808, "textLanguage": "" }, "correctHall": "hall_russia_19", "correctWall": "weapons" },
+  { "id": "medal_george_1812", "name": "Георгиевский крест", "traits": { "material": "серебро", "weight": 12.5, "size": "34 мм", "year": 1813, "textLanguage": "русский" }, "correctHall": "hall_russia_19", "correctWall": "documents" },
+  { "id": "helmet_stahlhelm_1916", "name": "Каска Stahlhelm M1916", "traits": { "material": "сталь", "weight": 1200.0, "size": "280 мм", "year": 1916, "textLanguage": "немецкий" }, "correctHall": "hall_europe_20", "correctWall": "weapons" },
+  { "id": "flask_ussr_1941", "name": "Фляга армейская СССР", "traits": { "material": "алюминий", "weight": 180.0, "size": "150 мм", "year": 1941, "textLanguage": "русский" }, "correctHall": "hall_ussr_20", "correctWall": "household" },
+  { "id": "letter_soldier_1943", "name": "Письмо-треугольник 1943", "traits": { "material": "бумага", "weight": 5.0, "size": "140 мм", "year": 1943, "textLanguage": "русский" }, "correctHall": "hall_ussr_20", "correctWall": "documents" }
+]

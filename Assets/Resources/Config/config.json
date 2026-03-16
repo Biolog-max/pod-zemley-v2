@@ -1,0 +1,27 @@
+{
+  "halls": [
+    { "id": "hall_russia_19", "name": "Россия XIX в.", "description": "Отечественная война 1812, декабристы, реформы", "banner": "Art/Halls/hall_russia_19" },
+    { "id": "hall_europe_20", "name": "Европа нач. XX в.", "description": "Первая мировая, революции", "banner": "Art/Halls/hall_europe_20" },
+    { "id": "hall_ussr_20", "name": "СССР XX в.", "description": "Великая Отечественная, послевоенный период", "banner": "Art/Halls/hall_ussr_20" }
+  ],
+  "walls": [
+    { "id": "weapons", "name": "Оружие", "description": "Ружья, штыки, сабли, пули", "icon": "Art/Icons/wall_weapons" },
+    { "id": "household", "name": "Бытовые предметы", "description": "Монеты, ложки, посуда, пуговицы", "icon": "Art/Icons/wall_household" },
+    { "id": "documents", "name": "Документы", "description": "Письма, карты, медали, награды", "icon": "Art/Icons/wall_documents" }
+  ],
+  "tools": [
+    { "id": "ruler", "name": "Линейка", "reveals": "size", "description": "Измеряет размер предмета", "icon": "Art/Icons/tool_ruler" },
+    { "id": "carbon", "name": "¹⁴C Анализ", "reveals": "year", "description": "Определяет год изготовления", "icon": "Art/Icons/tool_carbon" },
+    { "id": "scales", "name": "Весы", "reveals": "weight", "description": "Определяет вес предмета", "icon": "Art/Icons/tool_scales" },
+    { "id": "dictionary", "name": "Словарь", "reveals": "textLanguage", "description": "Определяет язык надписей", "icon": "Art/Icons/tool_dictionary" }
+  ],
+  "scoring": {
+    "correctHall": 50,
+    "correctWall": 50,
+    "bothCorrectBonus": 100,
+    "allPlacedBonus": 50,
+    "allCorrectBonus": 200,
+    "speedBonus": 30,
+    "speedThresholdSec": 180
+  }
+}
