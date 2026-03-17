@@ -203,13 +203,211 @@ namespace History
         }
         IEnumerator ACarbon(string r)
         {
-            var ls=new RectTransform[5];
-            for(int i=0;i<5;i++){ls[i]=M(0,0,4,550);ls[i].GetComponent<Image>().color=new Color(.25f,.8f,.25f,0);}
-            float t=0;while(t<1f){t+=Time.deltaTime;for(int i=0;i<5;i++){float ph=(t*2.5f+i*.18f)%1f;
-            ls[i].anchoredPosition=new Vector2(Mathf.Lerp(-380,380,ph),0);
-            ls[i].GetComponent<Image>().color=new Color(.25f,.8f,.25f,Mathf.Sin(ph*Mathf.PI)*.65f);}yield return null;}
-            foreach(var l in ls)l.GetComponent<Image>().color=new Color(0,0,0,0);
-            yield return Bub(r);yield return new WaitForSeconds(1f);
+            // Создаем 5 сканирующих линий с улучшенными параметрами
+            var ls = new RectTransform[5];
+            var glows = new RectTransform[5]; // Добавляем светодиоды для эффекта свечения
+
+            for (int i = 0; i < 5; i++)
+            {
+                // Основная линия сканирования
+                ls[i] = M(0, 0, 4, 550);
+                ls[i].GetComponent<Image>().color = new Color(.1f, .6f, 1f, 0);
+
+                // Слой свечения для линии
+                glows[i] = M(0, 0, 12, 560);
+                glows[i].GetComponent<Image>().color = new Color(.2f, .8f, 1.5f, 0);
+            }
+
+            // Добавляем частицы для эффекта распада
+            List<GameObject> particles = new List<GameObject>();
+            float t = 0;
+
+            // Основной цикл анимации с улучшенными эффектами
+            while (t < 1.2f)
+            {
+                t += Time.deltaTime;
+
+                for (int i = 0; i < 5; i++)
+                {
+                    // Улучшенный расчет фазы с плавным движением
+                    float ph = Mathf.SmoothStep(0, 1, (t * 2.2f + i * .15f) % 1f);
+
+                    // Добавляем небольшие колебания по вертикали для имитации вибрации оборудования
+                    float yOffset = Mathf.Sin(t * 15f + i) * 15f;
+
+                    // Позиционируем основную линию
+                    ls[i].anchoredPosition = new Vector2(Mathf.Lerp(-380, 380, ph), yOffset);
+
+                    // Добавляем пульсацию яркости
+                    float alpha = Mathf.Sin(ph * Mathf.PI) * .75f + Mathf.Sin(t * 10f) * .1f;
+                    ls[i].GetComponent<Image>().color = new Color(.1f, .6f, 1f, alpha);
+
+                    // Позиционируем и настраиваем свечение
+                    glows[i].anchoredPosition = new Vector2(Mathf.Lerp(-380, 380, ph), yOffset);
+                    float glowAlpha = alpha * 0.5f + 0.2f;
+                    glows[i].GetComponent<Image>().color = new Color(.2f, .8f, 1.5f, glowAlpha);
+                    glows[i].localScale = new Vector3(1, 1 + Mathf.Sin(t * 20f) * 0.2f, 1);
+
+                    // Создаем частицы распада при движении линий
+                    if (Time.frameCount % 3 == 0 && ph > 0.1f && ph < 0.9f)
+                    {
+                        float particleX = Mathf.Lerp(-380, 380, ph) + Random.Range(-10, 10);
+                        float particleY = yOffset + Random.Range(-50, 50);
+
+                        // Создаем частицу с эффектом распада
+                        var particle = M(particleX, particleY, 3, 3);
+                        particle.GetComponent<Image>().color = new Color(1f, 0.7f, 0.3f, 0.8f);
+
+                        // Добавляем частицу в список для последующей анимации
+                        particles.Add(particle.gameObject);
+
+                        // Запускаем корутину анимации частицы
+                        ((MonoBehaviour)gs).StartCoroutine(AnimateCarbonParticle(particle, 1.5f));
+                    }
+                }
+
+                yield return null;
+            }
+
+            // Плавное исчезновение линий (без предварительного пульсирующего этапа)
+            for (float fade = 1f; fade > 0; fade -= Time.deltaTime * 2f)
+            {
+                for (int i = 0; i < 5; i++)
+                {
+                    ls[i].GetComponent<Image>().color = new Color(.1f, .6f, 1f, fade * 0.6f);
+                    glows[i].GetComponent<Image>().color = new Color(.2f, .8f, 1.5f, fade * 0.3f);
+                }
+                yield return null;
+            }
+
+            // Очистка временных объектов
+            foreach (var l in ls)
+                if (l != null) Object.Destroy(l.gameObject);
+
+            foreach (var g in glows)
+                if (g != null) Object.Destroy(g.gameObject);
+
+            // Ожидание перед показом результата с эффектом "обработки данных"
+            var processing = M(0, -50, 200, 30);
+            processing.GetComponent<Image>().color = new Color(0, 0, 0, 0);
+
+            var procText = new GameObject("ProcText", typeof(RectTransform), typeof(Text));
+            procText.transform.SetParent(processing, false);
+            var rt = procText.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = Vector2.one * 0.5f;
+            rt.sizeDelta = new Vector2(180, 25);
+            rt.anchoredPosition = Vector2.zero;
+
+            var text = procText.GetComponent<Text>();
+            text.font = Font.CreateDynamicFontFromOSFont("Arial", 18);
+            text.color = new Color(0.2f, 0.8f, 1f);
+            text.text = "ОБРАБОТКА ДАННЫХ...";
+            text.alignment = TextAnchor.MiddleCenter;
+
+            yield return new WaitForSeconds(0.3f);
+
+            // Эффект мигающих точек в тексте
+            for (int dots = 1; dots <= 3; dots++)
+            {
+                text.text = "ОБРАБОТКА ДАННЫХ" + new string('.', dots);
+                yield return new WaitForSeconds(0.4f);
+            }
+
+            Object.Destroy(processing.gameObject);
+
+            // Показываем результат с улучшенной анимацией
+            yield return BubEnhanced(r);
+            yield return new WaitForSeconds(1f);
+        }
+
+        // Вспомогательная корутина для анимации частиц распада
+        IEnumerator AnimateCarbonParticle(RectTransform particle, float duration)
+        {
+            float t = 0;
+            Vector2 startPos = particle.anchoredPosition;
+            float startAlpha = particle.GetComponent<Image>().color.a;
+
+            while (t < duration)
+            {
+                t += Time.deltaTime;
+
+                // Частица движется вверх (имитация бета-частицы)
+                float y = startPos.y + t * 200f;
+                float x = startPos.x + Mathf.Sin(t * 5f) * 20f;
+
+                // Уменьшается и становится прозрачнее
+                float scale = 1f - t / duration;
+                float alpha = startAlpha * (1f - t / duration);
+
+                particle.anchoredPosition = new Vector2(x, y);
+                particle.localScale = new Vector3(scale, scale, 1);
+                particle.GetComponent<Image>().color = new Color(
+                    particle.GetComponent<Image>().color.r,
+                    particle.GetComponent<Image>().color.g,
+                    particle.GetComponent<Image>().color.b,
+                    alpha
+                );
+
+                yield return null;
+            }
+
+            if (particle != null) Object.Destroy(particle.gameObject);
+        }
+
+        // Улучшенная версия всплывающего окна с результатом
+        IEnumerator BubEnhanced(string text)
+        {
+            var bg = M(0, -60, 260, 60);
+            bg.GetComponent<Image>().color = new Color(0.05f, 0.2f, 0.4f, 0);
+
+            // Добавляем эффект свечения вокруг пузыря
+            var glow = M(0, -60, 280, 80);
+            glow.GetComponent<Image>().color = new Color(0.1f, 0.4f, 0.8f, 0);
+
+            var tGo = new GameObject("_bt", typeof(RectTransform));
+            tGo.transform.SetParent(bg, false);
+            var tr = tGo.GetComponent<RectTransform>();
+            tr.anchorMin = Vector2.zero;
+            tr.anchorMax = Vector2.one;
+            tr.offsetMin = tr.offsetMax = new Vector2(10, 10);
+
+            var tx = tGo.AddComponent<Text>();
+            tx.text = text;
+            tx.font = Font.CreateDynamicFontFromOSFont("Arial", 28);
+            tx.fontSize = 28;
+            tx.color = Color.white;
+            tx.alignment = TextAnchor.MiddleCenter;
+            tx.raycastTarget = false;
+
+            // Анимация появления с эффектом "расчета"
+            float t = 0;
+            while (t < 0.5f)
+            {
+                t += Time.deltaTime;
+                float alpha = Mathf.SmoothStep(0, 1, t / 0.5f);
+                float glowAlpha = alpha * 0.4f;
+                float scale = 0.8f + Mathf.Sin(t * 10f) * 0.1f;
+
+                bg.GetComponent<Image>().color = new Color(0.05f, 0.2f, 0.4f, alpha);
+                glow.GetComponent<Image>().color = new Color(0.1f, 0.4f, 0.8f, glowAlpha);
+                bg.localScale = new Vector3(scale, scale, 1);
+
+                yield return null;
+            }
+
+            // Мигание итогового результата
+            for (int i = 0; i < 2; i++)
+            {
+                tx.color = new Color(0.7f, 1f, 1f);
+                yield return new WaitForSeconds(0.15f);
+                tx.color = Color.white;
+                yield return new WaitForSeconds(0.15f);
+            }
+
+            // Сохраняем финальное состояние
+            bg.GetComponent<Image>().color = new Color(0.05f, 0.2f, 0.4f, 1);
+            glow.GetComponent<Image>().color = new Color(0.1f, 0.4f, 0.8f, 0.4f);
+            bg.localScale = Vector3.one;
         }
         IEnumerator ADict(string r)
         {
