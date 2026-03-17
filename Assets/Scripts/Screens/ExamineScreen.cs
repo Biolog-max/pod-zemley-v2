@@ -37,16 +37,21 @@ namespace History
             placedT  = Txt(p, "", Width - 300, 83, 260, 58, 18, T3, TextAnchor.MiddleRight);
 
             // artifact area - BIG (600px)
-            var artBg = Img(p, Pad, 155, CW, 600, Cv(.95f));
-            animRoot = artBg.transform; // animations spawn here
-            artImg = SprImg(p, Pad + 20, 165, CW - 40, 540, null);
+            // z-order: 1.artBg → 2.artImg → 3.animLayer → 4.dropHighlight
+            Img(p, Pad, 155, CW, 600, Cv(.95f));                          // 1. background
+            artImg = SprImg(p, Pad + 20, 165, CW - 40, 540, null);        // 2. artifact image
             artRT = artImg.GetComponent<RectTransform>();
 
-            // drop highlight (hidden, shown when dragging over)
+            // 3. animation layer (ABOVE artImg, semi-transparent container)
+            var animLayer = new GameObject("AnimLayer", typeof(RectTransform));
+            animLayer.transform.SetParent(p, false);
+            Pos(animLayer, Pad, 155, CW, 600);
+            animRoot = animLayer.transform;
+
+            // 4. drop highlight (topmost, receives drops)
             dropHighlight = Img(p, Pad, 155, CW, 600, new Color(.35f, .55f, .35f, .15f));
             dropHighlight.raycastTarget = true;
             dropHighlight.gameObject.SetActive(false);
-            // drop zone
             var dz = dropHighlight.gameObject.AddComponent<ToolDropZone>();
             dz.onDrop = OnToolDropped;
 
