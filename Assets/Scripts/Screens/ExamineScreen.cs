@@ -89,7 +89,10 @@ namespace History
                 // result (or "тап!")
                 cardResult[i] = Txt(cardGo.transform, "тап!", 0, 95, cardW, 40, 18, ACCENT, TextAnchor.MiddleCenter);
 
-                // make card draggable
+                // make card tappable AND draggable
+                var btn = cardGo.AddComponent<Button>();
+                int tapIdx = i;
+                btn.onClick.AddListener(() => OnCardTapped(tapIdx));
                 var drag = cardGo.AddComponent<ToolCardDrag>();
                 drag.toolIdx = i;
                 drag.examScreen = this;
@@ -143,9 +146,17 @@ namespace History
         }
 
         // --- TOOL INTERACTION ---
-        void OnToolPicked(string tid)
+        void OnToolPicked(string tid) { RefreshCards(); }
+
+        void OnCardTapped(int idx)
         {
-            RefreshCards();
+            if (animating) return;
+            if (gs.Config.tools.Count <= idx) return;
+            string tid = gs.Config.tools[idx].id;
+            if (gs.UsedTools.Contains(tid)) return;
+            gs.SelectTool(tid);
+            // apply immediately with animation
+            ((MonoBehaviour)gs).StartCoroutine(CoToolAnim(tid));
         }
 
         public void OnDragStart(int toolIdx)
@@ -159,13 +170,24 @@ namespace History
 
         public void OnDragEnd(int toolIdx)
         {
+            // delay hiding so OnDrop can fire first
+            ((MonoBehaviour)gs).StartCoroutine(CoDelayedHideDrop());
+        }
+
+        IEnumerator CoDelayedHideDrop()
+        {
+            yield return null; // wait one frame for OnDrop to process
             dropHighlight.gameObject.SetActive(false);
+            if (gs.SelectedTool != null && !animating)
+            {
+                // dropped outside artifact — deselect
+                gs.SelectTool(gs.SelectedTool); // toggles off
+            }
         }
 
         void OnToolDropped(string toolId)
         {
             if (animating) return;
-            dropHighlight.gameObject.SetActive(false);
             if (gs.SelectedTool != null)
                 ((MonoBehaviour)gs).StartCoroutine(CoToolAnim(gs.SelectedTool));
         }
@@ -276,22 +298,36 @@ namespace History
 
         IEnumerator ShowBubble(string text)
         {
-            var bub = MkRect(artImg.transform, 0, -20, 220, 50, PRI);
-            bub.anchorMin = bub.anchorMax = new Vector2(0.5f, 0.3f);
-            var go = bub.gameObject;
-            var txt = go.AddComponent<Text>();
-            txt.text = text; txt.font = Font.CreateDynamicFontFromOSFont("Arial", 14);
-            txt.fontSize = 26; txt.color = Color.white; txt.alignment = TextAnchor.MiddleCenter;
+            // background
+            var bub = MkRect(artImg.transform, 0, -20, 240, 55, PRI);
+            bub.anchorMin = bub.anchorMax = new Vector2(0.5f, 0.35f);
+            // text as child
+            var txtGo = new GameObject("_bt", typeof(RectTransform));
+            txtGo.transform.SetParent(bub, false);
+            var trt = txtGo.GetComponent<RectTransform>();
+            trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
+            trt.offsetMin = Vector2.zero; trt.offsetMax = Vector2.zero;
+            var txt = txtGo.AddComponent<Text>();
+            txt.text = text;
+            txt.font = Font.CreateDynamicFontFromOSFont("Arial", 14);
+            txt.fontSize = 28;
+            txt.color = Color.white;
+            txt.alignment = TextAnchor.MiddleCenter;
             txt.horizontalOverflow = HorizontalWrapMode.Overflow;
-            go.transform.localScale = Vector3.zero;
+            txt.raycastTarget = false;
+            animObjs.Add(txtGo);
+            // pop animation
+            bub.localScale = Vector3.zero;
             float t = 0;
-            while (t < 0.3f) {
+            while (t < 0.35f)
+            {
                 t += Time.deltaTime;
-                float s = t < 0.2f ? (t / 0.2f) * 1.15f : 1.15f - (t - 0.2f) / 0.1f * 0.15f;
-                go.transform.localScale = Vector3.one * s;
+                float p = t / 0.35f;
+                float s = p < 0.6f ? (p / 0.6f) * 1.2f : 1.2f - (p - 0.6f) / 0.4f * 0.2f;
+                bub.localScale = Vector3.one * s;
                 yield return null;
             }
-            go.transform.localScale = Vector3.one;
+            bub.localScale = Vector3.one;
         }
 
         RectTransform MkRect(Transform parent, float x, float y, float w, float h, Color col)
