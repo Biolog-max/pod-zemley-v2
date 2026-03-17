@@ -34,6 +34,7 @@ namespace History
     [Serializable] public class ArtifactInfo
     {
         public string id, name, correctHall, correctWall, funFact;
+        public string inscription; // image path for text close-up (null if no text)
         public TraitSet traits = new TraitSet();
         public List<ZoneData> zones = new List<ZoneData>();
     }

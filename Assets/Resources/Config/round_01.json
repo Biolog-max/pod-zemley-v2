@@ -8,6 +8,7 @@
     {
       "id": "coin_1kop_1812",
       "name": "Круглый металлический предмет",
+      "inscription": "coin_1kop_1812_inscription",
       "traits": { "material": "медь", "weight": 6.8, "size": "25 мм", "year": 1812, "textLanguage": "русский" },
       "zones": [
         { "id": "obverse", "name": "Лицевая сторона", "image": "coin_1kop_1812_obverse", "description": "Двуглавый орёл, герб Российской империи. Металл зеленовато-коричневый.", "revealsTraits": ["material"] },

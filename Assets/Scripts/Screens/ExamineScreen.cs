@@ -213,17 +213,67 @@ namespace History
         }
         IEnumerator ADict(string r)
         {
+            // magnifying glass: ring + lens + handle
             var ring=M(-150,0,105,105);ring.GetComponent<Image>().color=new Color(.3f,.25f,.15f,.85f);
             var inn=M(0,0,84,84);inn.GetComponent<Image>().color=new Color(.9f,.9f,.85f,.3f);
             inn.SetParent(ring,false);inn.anchorMin=inn.anchorMax=new Vector2(.5f,.5f);inn.anchoredPosition=Vector2.zero;
             var hnd=M(40,-40,10,48);hnd.GetComponent<Image>().color=new Color(.4f,.3f,.15f);
             hnd.SetParent(ring,false);hnd.anchorMin=hnd.anchorMax=new Vector2(.5f,.5f);hnd.localRotation=Quaternion.Euler(0,0,-45);
+
+            // fly along bezier
             Vector2 s=new Vector2(-170,-30),c=new Vector2(0,70),e=new Vector2(130,40);
             float t=0;while(t<.8f){t+=Time.deltaTime;float p=Mathf.SmoothStep(0,1,t/.8f);
             ring.anchoredPosition=Vector2.Lerp(Vector2.Lerp(s,c,p),Vector2.Lerp(c,e,p),p);
             ring.localScale=Vector3.one*(1f+.1f*Mathf.Sin(t*7f));yield return null;}
-            ring.localScale=Vector3.one;inn.GetComponent<Image>().color=new Color(.8f,.95f,.8f,.5f);
-            yield return new WaitForSeconds(.15f);yield return Bub(r);yield return new WaitForSeconds(1f);
+            ring.localScale=Vector3.one;
+
+            // found text?
+            bool hasText = gs.Art != null && !string.IsNullOrEmpty(gs.Art.traits.textLanguage);
+            string inscPath = gs.Art != null ? gs.Art.inscription : null;
+
+            if (hasText && !string.IsNullOrEmpty(inscPath))
+            {
+                // show inscription image inside lens area
+                inn.GetComponent<Image>().color = Color.white;
+                var spr = DataLoader.LoadSprite("Art/Artifacts/Inscriptions/" + inscPath);
+                if (spr != null)
+                {
+                    inn.GetComponent<Image>().sprite = spr;
+                    inn.GetComponent<Image>().preserveAspect = true;
+                }
+
+                // also show enlarged inscription panel below magnifier
+                var panel = M(0, -120, 400, 180);
+                panel.GetComponent<Image>().color = new Color(0,0,0,.75f);
+                // inscription image in panel
+                var inscGo = new GameObject("_insc", typeof(RectTransform), typeof(Image));
+                inscGo.transform.SetParent(panel, false);
+                var irt = inscGo.GetComponent<RectTransform>();
+                irt.anchorMin = Vector2.zero; irt.anchorMax = Vector2.one;
+                irt.offsetMin = new Vector2(10,10); irt.offsetMax = new Vector2(-10,-10);
+                var iimg = inscGo.GetComponent<Image>();
+                iimg.preserveAspect = true; iimg.raycastTarget = false;
+                if (spr != null) { iimg.sprite = spr; iimg.color = Color.white; }
+                animObjs.Add(inscGo);
+
+                // fade in panel
+                var cg = panel.gameObject.AddComponent<CanvasGroup>();
+                cg.alpha = 0;
+                float ft = 0;
+                while (ft < .4f) { ft += Time.deltaTime; cg.alpha = ft / .4f; yield return null; }
+                cg.alpha = 1;
+
+                yield return new WaitForSeconds(1.5f);
+            }
+            else
+            {
+                // no text — lens stays translucent
+                inn.GetComponent<Image>().color = new Color(.85f,.85f,.8f,.4f);
+                yield return new WaitForSeconds(.3f);
+            }
+
+            yield return Bub(r);
+            yield return new WaitForSeconds(1f);
         }
         IEnumerator Bub(string text)
         {
