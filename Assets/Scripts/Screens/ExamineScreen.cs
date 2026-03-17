@@ -37,7 +37,8 @@ namespace History
             placedT  = Txt(p, "", Width - 300, 83, 260, 58, 18, T3, TextAnchor.MiddleRight);
 
             // artifact area - BIG (600px)
-            Img(p, Pad, 155, CW, 600, Cv(.95f));
+            var artBg = Img(p, Pad, 155, CW, 600, Cv(.95f));
+            animRoot = artBg.transform; // animations spawn here
             artImg = SprImg(p, Pad + 20, 165, CW - 40, 540, null);
             artRT = artImg.GetComponent<RectTransform>();
 
@@ -219,88 +220,202 @@ namespace History
         }
 
         // --- PROCEDURAL ANIMATIONS ---
+        // All animations use animRoot (the gray artifact area) as parent
+        // with stretch anchors so they scale correctly
+
+        Transform animRoot; // set in Build to the artifact background area
 
         IEnumerator AnimRuler(string result)
         {
-            // ruler bar grows across artifact
-            var bar = MkRect(artImg.transform, 0, 0, 0, 10, new Color(.55f, .35f, .15f, .9f));
-            bar.anchorMin = bar.anchorMax = new Vector2(0, 0.3f);
+            // деревянная линейка растёт слева направо
+            var bar = MkAnim(0, -30, 0, 16);
+            bar.GetComponent<Image>().color = new Color(.55f, .35f, .15f, .95f);
+            bar.anchorMin = new Vector2(0.05f, 0.35f);
+            bar.anchorMax = new Vector2(0.05f, 0.35f);
             bar.pivot = new Vector2(0, 0.5f);
-            float fw = artRT.rect.width - 40;
-            float t = 0;
-            while (t < 0.5f) { t += Time.deltaTime; bar.sizeDelta = new Vector2(fw * (t / 0.5f), 10); yield return null; }
-            // markers
-            var m1 = MkRect(artImg.transform, 20, 0, 4, 30, RED); m1.anchorMin = m1.anchorMax = new Vector2(0, 0.3f);
-            var m2 = MkRect(artImg.transform, fw - 20, 0, 4, 30, RED); m2.anchorMin = m2.anchorMax = new Vector2(0, 0.3f);
+
+            // деления появляются по мере роста
+            float targetW = 850f;
+            int totalTicks = 16;
+            float dur = 0.6f, t = 0;
+            while (t < dur)
+            {
+                t += Time.deltaTime;
+                float p = Mathf.SmoothStep(0, 1, t / dur);
+                bar.sizeDelta = new Vector2(targetW * p, 16);
+                yield return null;
+            }
+
+            // 8 делений
+            for (int i = 0; i <= 8; i++)
+            {
+                float tx = targetW * i / 8f;
+                bool major = (i % 2 == 0);
+                var tick = MkAnim(tx, 0, 3, major ? 35 : 20);
+                tick.GetComponent<Image>().color = new Color(.3f, .15f, .05f);
+                tick.anchorMin = tick.anchorMax = new Vector2(0.05f, 0.35f);
+                tick.anchoredPosition = new Vector2(tx, 20);
+            }
+            yield return new WaitForSeconds(0.15f);
+
+            // красные маркеры скользят
+            var m1 = MkAnim(targetW * 0.1f, 40, 6, 40);
+            m1.GetComponent<Image>().color = RED;
+            m1.anchorMin = m1.anchorMax = new Vector2(0.05f, 0.35f);
+
+            var m2 = MkAnim(targetW * 0.1f, 40, 6, 40);
+            m2.GetComponent<Image>().color = RED;
+            m2.anchorMin = m2.anchorMax = new Vector2(0.05f, 0.35f);
+
+            t = 0;
+            while (t < 0.3f)
+            {
+                t += Time.deltaTime;
+                float p = Mathf.SmoothStep(0, 1, t / 0.3f);
+                m2.anchoredPosition = new Vector2(Mathf.Lerp(targetW * 0.1f, targetW * 0.85f, p), 40);
+                yield return null;
+            }
+
+            // линия между маркерами
+            var line = MkAnim(0, 45, targetW * 0.75f, 3);
+            line.GetComponent<Image>().color = RED;
+            line.anchorMin = line.anchorMax = new Vector2(0.05f, 0.35f);
+            line.anchoredPosition = new Vector2(targetW * 0.1f, 45);
+            line.pivot = new Vector2(0, 0.5f);
+
             yield return new WaitForSeconds(0.2f);
-            // bubble
             yield return ShowBubble(result);
-            yield return new WaitForSeconds(1f);
+            yield return new WaitForSeconds(1.2f);
         }
 
         IEnumerator AnimScales(string result)
         {
-            var beam = MkRect(artImg.transform, 0, 30, 200, 4, new Color(.5f, .4f, .2f));
-            beam.anchorMin = beam.anchorMax = new Vector2(0.5f, 0.4f);
-            float t = 0;
-            while (t < 1f) {
+            // стойка
+            var pole = MkAnim(0, -30, 8, 200);
+            pole.GetComponent<Image>().color = new Color(.45f, .35f, .2f);
+            // перекладина
+            var beam = MkAnim(0, 70, 300, 6);
+            beam.GetComponent<Image>().color = new Color(.55f, .45f, .2f);
+            // левая чаша
+            var lPan = MkAnim(-120, 10, 80, 6);
+            lPan.GetComponent<Image>().color = new Color(.5f, .4f, .15f);
+            // правая чаша
+            var rPan = MkAnim(120, 10, 80, 6);
+            rPan.GetComponent<Image>().color = new Color(.5f, .4f, .15f);
+
+            // качание с затуханием
+            float dur = 1.5f, t = 0;
+            while (t < dur)
+            {
                 t += Time.deltaTime;
-                float angle = Mathf.Sin(t * 7f) * 15f * (1f - t);
+                float decay = 1f - Mathf.Pow(t / dur, 0.6f);
+                float angle = Mathf.Sin(t * 6f) * 20f * decay;
                 beam.localRotation = Quaternion.Euler(0, 0, angle);
+                float osc = Mathf.Sin(t * 6f) * 40f * decay;
+                lPan.anchoredPosition = new Vector2(-120, 10 - osc);
+                rPan.anchoredPosition = new Vector2(120, 10 + osc);
                 yield return null;
             }
-            beam.localRotation = Quaternion.identity;
+            beam.localRotation = Quaternion.Euler(0, 0, -3f);
+            lPan.anchoredPosition = new Vector2(-120, 10 + 12);
+            rPan.anchoredPosition = new Vector2(120, 10 - 12);
+
             yield return ShowBubble(result);
-            yield return new WaitForSeconds(1f);
+            yield return new WaitForSeconds(1.2f);
         }
 
         IEnumerator AnimCarbon(string result)
         {
-            var lines = new RectTransform[4];
-            float h = artRT.rect.height;
-            for (int i = 0; i < 4; i++) {
-                lines[i] = MkRect(artImg.transform, 0, 0, 3, h * 0.8f, new Color(.3f, .8f, .3f, 0));
-                lines[i].anchorMin = lines[i].anchorMax = new Vector2(0, 0.5f);
+            // 5 зелёных линий летят волнами
+            int lineCount = 5;
+            var lines = new RectTransform[lineCount];
+            Color scanCol = new Color(.25f, .8f, .25f);
+            for (int i = 0; i < lineCount; i++)
+            {
+                lines[i] = MkAnim(0, 0, 4, 450);
+                lines[i].GetComponent<Image>().color = new Color(scanCol.r, scanCol.g, scanCol.b, 0);
             }
-            float fw = artRT.rect.width, t = 0;
-            while (t < 0.9f) {
+
+            // HUD badge
+            var hud = MkAnim(-350, 200, 100, 35);
+            hud.GetComponent<Image>().color = new Color(0, 0, 0, .6f);
+            var hudTxt = new GameObject("_ht", typeof(RectTransform));
+            hudTxt.transform.SetParent(hud, false);
+            var htrt = hudTxt.GetComponent<RectTransform>();
+            htrt.anchorMin = Vector2.zero; htrt.anchorMax = Vector2.one;
+            htrt.offsetMin = htrt.offsetMax = Vector2.zero;
+            var ht = hudTxt.AddComponent<Text>();
+            ht.text = "C-14"; ht.font = Font.CreateDynamicFontFromOSFont("Arial", 14);
+            ht.fontSize = 18; ht.color = new Color(.4f, .9f, .4f);
+            ht.alignment = TextAnchor.MiddleCenter; ht.raycastTarget = false;
+            animObjs.Add(hudTxt);
+
+            float dur = 1.1f, t = 0;
+            while (t < dur)
+            {
                 t += Time.deltaTime;
-                for (int i = 0; i < 4; i++) {
-                    float phase = (t * 2f + i * 0.2f) % 1f;
-                    lines[i].anchoredPosition = new Vector2(fw * phase, 0);
-                    lines[i].GetComponent<Image>().color = new Color(.3f, .8f, .3f, Mathf.Sin(phase * Mathf.PI) * 0.6f);
+                float p = t / dur;
+                for (int i = 0; i < lineCount; i++)
+                {
+                    float phase = (p * 2.5f + i * 0.18f) % 1f;
+                    float x = Mathf.Lerp(-420, 420, phase);
+                    float alpha = Mathf.Sin(phase * Mathf.PI) * 0.7f;
+                    lines[i].anchoredPosition = new Vector2(x, 0);
+                    lines[i].GetComponent<Image>().color = new Color(scanCol.r, scanCol.g, scanCol.b, alpha);
                 }
                 yield return null;
             }
             foreach (var l in lines) l.GetComponent<Image>().color = new Color(0, 0, 0, 0);
+
             yield return ShowBubble(result);
-            yield return new WaitForSeconds(1f);
+            yield return new WaitForSeconds(1.2f);
         }
 
         IEnumerator AnimDict(string result)
         {
-            var lens = MkRect(artImg.transform, 0, 0, 90, 90, new Color(.3f, .25f, .2f, .6f));
-            lens.anchorMin = lens.anchorMax = new Vector2(0.3f, 0.5f);
-            float t = 0;
-            Vector2 start = new Vector2(-80, 0), end = new Vector2(80, 30);
-            while (t < 0.7f) {
+            // лупа: тёмное кольцо + светлый центр
+            var ring = MkAnim(-150, 0, 120, 120);
+            ring.GetComponent<Image>().color = new Color(.3f, .25f, .15f, .85f);
+            var inner = MkAnim(0, 0, 96, 96);
+            inner.GetComponent<Image>().color = new Color(.9f, .9f, .85f, .3f);
+            inner.SetParent(ring, false);
+            inner.anchorMin = inner.anchorMax = new Vector2(.5f, .5f);
+            inner.anchoredPosition = Vector2.zero;
+            // ручка
+            var handle = MkAnim(45, -45, 12, 60);
+            handle.GetComponent<Image>().color = new Color(.4f, .3f, .15f);
+            handle.SetParent(ring, false);
+            handle.anchorMin = handle.anchorMax = new Vector2(.5f, .5f);
+            handle.localRotation = Quaternion.Euler(0, 0, -45);
+
+            // лупа летит по Безье
+            Vector2 start = new Vector2(-200, -50), ctrl = new Vector2(0, 100), end = new Vector2(150, 50);
+            float dur = 0.9f, t = 0;
+            while (t < dur)
+            {
                 t += Time.deltaTime;
-                float p = Mathf.SmoothStep(0, 1, t / 0.7f);
-                lens.anchoredPosition = Vector2.Lerp(start, end, p);
-                float sc = 1f + 0.1f * Mathf.Sin(t * 8f);
-                lens.localScale = Vector3.one * sc;
+                float p = Mathf.SmoothStep(0, 1, t / dur);
+                Vector2 a = Vector2.Lerp(start, ctrl, p);
+                Vector2 b = Vector2.Lerp(ctrl, end, p);
+                ring.anchoredPosition = Vector2.Lerp(a, b, p);
+                float sc = 1f + 0.12f * Mathf.Sin(t * 7f);
+                ring.localScale = Vector3.one * sc;
                 yield return null;
             }
-            lens.localScale = Vector3.one;
+            ring.localScale = Vector3.one;
+            // flash green
+            inner.GetComponent<Image>().color = new Color(.8f, .95f, .8f, .5f);
+
+            yield return new WaitForSeconds(0.2f);
             yield return ShowBubble(result);
-            yield return new WaitForSeconds(1f);
+            yield return new WaitForSeconds(1.2f);
         }
 
         IEnumerator ShowBubble(string text)
         {
             // background
-            var bub = MkRect(artImg.transform, 0, -20, 240, 55, PRI);
-            bub.anchorMin = bub.anchorMax = new Vector2(0.5f, 0.35f);
+            var bub = MkAnim(0, -80, 240, 55);
+            bub.GetComponent<Image>().color = PRI;
             // text as child
             var txtGo = new GameObject("_bt", typeof(RectTransform));
             txtGo.transform.SetParent(bub, false);
@@ -330,16 +445,16 @@ namespace History
             bub.localScale = Vector3.one;
         }
 
-        RectTransform MkRect(Transform parent, float x, float y, float w, float h, Color col)
+        // Create animation element parented to animRoot (artifact background area)
+        RectTransform MkAnim(float x, float y, float w, float h)
         {
             var go = new GameObject("_a", typeof(RectTransform), typeof(Image));
-            go.transform.SetParent(parent, false);
+            go.transform.SetParent(animRoot, false);
             var rt = go.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
             rt.pivot = new Vector2(0.5f, 0.5f);
             rt.anchoredPosition = new Vector2(x, y);
             rt.sizeDelta = new Vector2(w, h);
-            go.GetComponent<Image>().color = col;
             go.GetComponent<Image>().raycastTarget = false;
             animObjs.Add(go);
             return rt;
