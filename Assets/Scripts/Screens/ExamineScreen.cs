@@ -1,115 +1,341 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using System.Collections;
 using static History.UIKit;
 
 namespace History
 {
     public class ExamineScreen : BaseScreen
     {
-        Text timerT, counterT, placedT, artNameT, sideNameT, zoneDescT, hintT;
-        Text[] noteVal = new Text[5];
-        Button[] toolBtn = new Button[4];
-        Image[] toolBg = new Image[4];
+        Text timerT, counterT, placedT, sideNameT, zoneDescT;
         Image artImg;
+        RectTransform artRT;
         int sideIdx;
+
+        // tool cards: combined tool + result
+        GameObject[] cards = new GameObject[4];
+        Text[] cardName = new Text[4];
+        Text[] cardResult = new Text[4];
+        Image[] cardBg = new Image[4];
+        Image[] cardIcon = new Image[4];
+
+        // drag overlay
+        GameObject dragGhost;
+        Image dropHighlight;
+        bool animating;
+
+        // procedural animation objects
+        System.Collections.Generic.List<GameObject> animObjs = new System.Collections.Generic.List<GameObject>();
 
         protected override void Build(Transform p)
         {
-            // top bar
-            Img(p, 0, 80, Width, 80, Cv(.95f));
-            timerT   = Txt(p, "1:00", Pad, 85, 200, 70, 34, T1);
-            counterT = Txt(p, "1/4", 0, 85, Width, 70, 24, T2, TextAnchor.MiddleCenter);
-            placedT  = Txt(p, "0", Width - 350, 85, 310, 70, 20, T3, TextAnchor.MiddleRight);
-            Img(p, Pad, 155, CW, 4, Cv(.9f));
+            // top bar - compact
+            Img(p, 0, 80, Width, 65, Cv(.95f));
+            timerT   = Txt(p, "1:00", Pad, 83, 160, 58, 32, T1);
+            counterT = Txt(p, "", 0, 83, Width, 58, 22, T2, TextAnchor.MiddleCenter);
+            placedT  = Txt(p, "", Width - 300, 83, 260, 58, 18, T3, TextAnchor.MiddleRight);
 
-            // artifact
-            Img(p, Pad, 175, CW, 400, Cv(.95f));
-            artImg = SprImg(p, Pad + 50, 185, CW - 100, 380, null);
-            artNameT = Txt(p, "", 0, 540, Width, 30, 20, T3, TextAnchor.MiddleCenter);
+            // artifact area - BIG (600px)
+            Img(p, Pad, 155, CW, 600, Cv(.95f));
+            artImg = SprImg(p, Pad + 20, 165, CW - 40, 540, null);
+            artRT = artImg.GetComponent<RectTransform>();
 
-            // side nav
-            Btn(p, "\u25C0", Pad, 575, 60, 40, 22, false, () => SwipeSide(-1));
-            sideNameT = Txt(p, "", 0, 575, Width, 40, 22, T1, TextAnchor.MiddleCenter);
-            Btn(p, "\u25B6", Width - Pad - 60, 575, 60, 40, 22, false, () => SwipeSide(1));
-            Txt(p, "\u2190 свайп \u2192", 0, 610, Width, 20, 14, T3, TextAnchor.MiddleCenter);
+            // drop highlight (hidden, shown when dragging over)
+            dropHighlight = Img(p, Pad, 155, CW, 600, new Color(.35f, .55f, .35f, .15f));
+            dropHighlight.raycastTarget = true;
+            dropHighlight.gameObject.SetActive(false);
+            // drop zone
+            var dz = dropHighlight.gameObject.AddComponent<ToolDropZone>();
+            dz.onDrop = OnToolDropped;
 
-            zoneDescT = Txt(p, "", Pad + 10, 635, CW - 20, 45, 18, T2);
-            hintT = Txt(p, "", 0, 635, Width, 40, 20, new Color(.53f,.43f,.2f), TextAnchor.MiddleCenter);
-            hintT.gameObject.SetActive(false);
+            // side nav overlaid on artifact bottom
+            Img(p, Pad, 700, CW, 45, new Color(0, 0, 0, .3f));
+            Btn(p, "\u25C0", Pad, 702, 80, 40, 24, false, () => SwipeSide(-1));
+            sideNameT = Txt(p, "", 0, 702, Width, 40, 20, Color.white, TextAnchor.MiddleCenter);
+            Btn(p, "\u25B6", Width - Pad - 80, 702, 80, 40, 24, false, () => SwipeSide(1));
 
-            // tools
-            Img(p, 0, 685, Width, 2, DIV);
-            Txt(p, "Инструменты:", Pad, 695, CW, 30, 22, T1);
+            // zone description
+            zoneDescT = Txt(p, "", Pad + 10, 755, CW - 20, 45, 18, T2);
+
+            // --- TOOL CARDS (4 cards, tool + result merged) ---
+            float cardW = (CW - 30) / 4; // 4 cards with 10px gaps
+            string[] toolIds = null;
+            if (gs.Config.tools.Count >= 4)
+                toolIds = new string[] {
+                    gs.Config.tools[0].icon, gs.Config.tools[1].icon,
+                    gs.Config.tools[2].icon, gs.Config.tools[3].icon };
+
             for (int i = 0; i < 4; i++)
             {
-                float bx = Pad + i * 250;
-                var b = Btn(p, "", bx, 730, 230, 75, 16, false, null);
-                toolBtn[i] = b;
-                toolBg[i] = b.GetComponent<Image>();
-                if (gs.Config.tools.Count > i)
-                    SprImg(b.transform, 5, 5, 35, 35, gs.Config.tools[i].icon);
-                int idx = i;
-                b.onClick.AddListener(() => {
-                    if (gs.Config.tools.Count > idx) gs.SelectTool(gs.Config.tools[idx].id);
-                });
+                float cx = Pad + i * (cardW + 10);
+                // card background
+                var cardGo = new GameObject("Card" + i, typeof(RectTransform), typeof(Image));
+                cardGo.transform.SetParent(p, false);
+                Pos(cardGo, cx, 810, cardW, 145);
+                var bg = cardGo.GetComponent<Image>();
+                bg.color = CARD;
+                cards[i] = cardGo;
+                cardBg[i] = bg;
+
+                // icon
+                string icoPath = toolIds != null && i < toolIds.Length ? toolIds[i] : null;
+                cardIcon[i] = SprImg(cardGo.transform, (cardW - 50) / 2, 10, 50, 50, icoPath);
+
+                // tool name
+                string tName = gs.Config.tools.Count > i ? gs.Config.tools[i].name : "";
+                cardName[i] = Txt(cardGo.transform, tName, 0, 65, cardW, 25, 16, T1, TextAnchor.MiddleCenter);
+
+                // result (or "тап!")
+                cardResult[i] = Txt(cardGo.transform, "тап!", 0, 95, cardW, 40, 18, ACCENT, TextAnchor.MiddleCenter);
+
+                // make card draggable
+                var drag = cardGo.AddComponent<ToolCardDrag>();
+                drag.toolIdx = i;
+                drag.examScreen = this;
             }
 
-            // notebook
-            Img(p, 0, 815, Width, 2, DIV);
-            Txt(p, "Блокнот:", Pad, 825, CW, 30, 22, T1);
-            Img(p, Pad, 860, CW, 255, CARD);
-            string[] labels = { "Материал:", "Размер:", "Вес:", "Год:", "Язык:" };
-            for (int i = 0; i < 5; i++)
-            {
-                float ny = 870 + i * 48;
-                Txt(p, labels[i], Pad + 15, ny, 280, 35, 20, T3);
-                noteVal[i] = Txt(p, "\u2014", Pad + 300, ny, 660, 35, 20, T1);
-                if (i < 4) Img(p, Pad + 15, ny + 40, CW - 30, 1, DIV);
-            }
+            // actions at bottom
+            Btn(p, "Справочник", Pad, 975, CW / 2 - 10, 65, 20, false, () => gs.OpenRef());
+            Btn(p, "Пропустить", Pad, 1060, (CW - 20) / 2, 80, 20, false, () => gs.SkipArt());
+            Btn(p, "В МУЗЕЙ \u2192", Pad + CW / 2 + 10, 1060, (CW - 20) / 2, 80, 24, true, () => gs.GoMuseum());
 
-            // actions
-            Btn(p, "Справочник", Pad, 1140, CW, 75, 22, false, () => gs.OpenRef());
-            Btn(p, "Пропустить", Pad, 1240, 480, 88, 22, false, () => gs.SkipArt());
-            Btn(p, "В музей \u2192", Pad + 520, 1240, 480, 88, 26, true, () => gs.GoMuseum());
-
-            // subscribe
             gs.OnToolPicked += OnToolPicked;
         }
 
+        // --- SIDE NAVIGATION ---
         void SwipeSide(int dir)
         {
             if (gs.Art == null || gs.Art.zones.Count == 0) return;
             sideIdx = (sideIdx + dir + gs.Art.zones.Count) % gs.Art.zones.Count;
-            ShowSide();
+            ShowSide(true);
         }
 
-        void ShowSide()
+        void ShowSide(bool animate)
         {
             var a = gs.Art;
             if (a == null || a.zones.Count == 0) return;
             var z = a.zones[sideIdx];
-            sideNameT.text = z.name;
+            sideNameT.text = z.name + " (" + (sideIdx + 1) + "/" + a.zones.Count + ")";
             if (!string.IsNullOrEmpty(z.image))
             {
                 var spr = DataLoader.LoadSprite("Art/Artifacts/Sides/" + z.image);
                 if (spr != null) { artImg.sprite = spr; artImg.color = Color.white; }
             }
             gs.ExamZone(z.id);
-            bool seen = gs.SeenZones.Contains(z.id);
-            zoneDescT.text = seen ? z.description : "";
+            zoneDescT.text = gs.SeenZones.Contains(z.id) ? z.description : "";
+            if (animate && artRT != null && root.activeInHierarchy)
+                ((MonoBehaviour)gs).StartCoroutine(CoFlip());
         }
 
+        IEnumerator CoFlip()
+        {
+            float t = 0, d = 0.2f;
+            while (t < d)
+            {
+                t += Time.deltaTime;
+                float p = t / d;
+                float sx = p < 0.5f ? 1f - p * 2f : (p - 0.5f) * 2f;
+                artRT.localScale = new Vector3(sx, 1, 1);
+                yield return null;
+            }
+            artRT.localScale = Vector3.one;
+        }
+
+        // --- TOOL INTERACTION ---
         void OnToolPicked(string tid)
         {
+            RefreshCards();
+        }
+
+        public void OnDragStart(int toolIdx)
+        {
+            if (gs.Config.tools.Count <= toolIdx) return;
+            string tid = gs.Config.tools[toolIdx].id;
+            if (gs.UsedTools.Contains(tid)) return;
+            gs.SelectTool(tid);
+            dropHighlight.gameObject.SetActive(true);
+        }
+
+        public void OnDragEnd(int toolIdx)
+        {
+            dropHighlight.gameObject.SetActive(false);
+        }
+
+        void OnToolDropped(string toolId)
+        {
+            if (animating) return;
+            dropHighlight.gameObject.SetActive(false);
+            if (gs.SelectedTool != null)
+                ((MonoBehaviour)gs).StartCoroutine(CoToolAnim(gs.SelectedTool));
+        }
+
+        IEnumerator CoToolAnim(string toolId)
+        {
+            animating = true;
+            var tool = gs.Config.tools.Find(x => x.id == toolId);
+            if (tool == null) { animating = false; yield break; }
+
+            string result = gs.Art.traits.Get(tool.reveals);
+            ClearAnimObjs();
+
+            // run specific animation
+            switch (toolId)
+            {
+                case "ruler":     yield return AnimRuler(result); break;
+                case "scales":    yield return AnimScales(result); break;
+                case "carbon":    yield return AnimCarbon(result); break;
+                case "dictionary":yield return AnimDict(result); break;
+                default:          yield return new WaitForSeconds(0.5f); break;
+            }
+
+            // apply
+            gs.ApplyTool();
+            RefreshCards();
+            ClearAnimObjs();
+            animating = false;
+        }
+
+        // --- PROCEDURAL ANIMATIONS ---
+
+        IEnumerator AnimRuler(string result)
+        {
+            // ruler bar grows across artifact
+            var bar = MkRect(artImg.transform, 0, 0, 0, 10, new Color(.55f, .35f, .15f, .9f));
+            bar.anchorMin = bar.anchorMax = new Vector2(0, 0.3f);
+            bar.pivot = new Vector2(0, 0.5f);
+            float fw = artRT.rect.width - 40;
+            float t = 0;
+            while (t < 0.5f) { t += Time.deltaTime; bar.sizeDelta = new Vector2(fw * (t / 0.5f), 10); yield return null; }
+            // markers
+            var m1 = MkRect(artImg.transform, 20, 0, 4, 30, RED); m1.anchorMin = m1.anchorMax = new Vector2(0, 0.3f);
+            var m2 = MkRect(artImg.transform, fw - 20, 0, 4, 30, RED); m2.anchorMin = m2.anchorMax = new Vector2(0, 0.3f);
+            yield return new WaitForSeconds(0.2f);
+            // bubble
+            yield return ShowBubble(result);
+            yield return new WaitForSeconds(1f);
+        }
+
+        IEnumerator AnimScales(string result)
+        {
+            var beam = MkRect(artImg.transform, 0, 30, 200, 4, new Color(.5f, .4f, .2f));
+            beam.anchorMin = beam.anchorMax = new Vector2(0.5f, 0.4f);
+            float t = 0;
+            while (t < 1f) {
+                t += Time.deltaTime;
+                float angle = Mathf.Sin(t * 7f) * 15f * (1f - t);
+                beam.localRotation = Quaternion.Euler(0, 0, angle);
+                yield return null;
+            }
+            beam.localRotation = Quaternion.identity;
+            yield return ShowBubble(result);
+            yield return new WaitForSeconds(1f);
+        }
+
+        IEnumerator AnimCarbon(string result)
+        {
+            var lines = new RectTransform[4];
+            float h = artRT.rect.height;
+            for (int i = 0; i < 4; i++) {
+                lines[i] = MkRect(artImg.transform, 0, 0, 3, h * 0.8f, new Color(.3f, .8f, .3f, 0));
+                lines[i].anchorMin = lines[i].anchorMax = new Vector2(0, 0.5f);
+            }
+            float fw = artRT.rect.width, t = 0;
+            while (t < 0.9f) {
+                t += Time.deltaTime;
+                for (int i = 0; i < 4; i++) {
+                    float phase = (t * 2f + i * 0.2f) % 1f;
+                    lines[i].anchoredPosition = new Vector2(fw * phase, 0);
+                    lines[i].GetComponent<Image>().color = new Color(.3f, .8f, .3f, Mathf.Sin(phase * Mathf.PI) * 0.6f);
+                }
+                yield return null;
+            }
+            foreach (var l in lines) l.GetComponent<Image>().color = new Color(0, 0, 0, 0);
+            yield return ShowBubble(result);
+            yield return new WaitForSeconds(1f);
+        }
+
+        IEnumerator AnimDict(string result)
+        {
+            var lens = MkRect(artImg.transform, 0, 0, 90, 90, new Color(.3f, .25f, .2f, .6f));
+            lens.anchorMin = lens.anchorMax = new Vector2(0.3f, 0.5f);
+            float t = 0;
+            Vector2 start = new Vector2(-80, 0), end = new Vector2(80, 30);
+            while (t < 0.7f) {
+                t += Time.deltaTime;
+                float p = Mathf.SmoothStep(0, 1, t / 0.7f);
+                lens.anchoredPosition = Vector2.Lerp(start, end, p);
+                float sc = 1f + 0.1f * Mathf.Sin(t * 8f);
+                lens.localScale = Vector3.one * sc;
+                yield return null;
+            }
+            lens.localScale = Vector3.one;
+            yield return ShowBubble(result);
+            yield return new WaitForSeconds(1f);
+        }
+
+        IEnumerator ShowBubble(string text)
+        {
+            var bub = MkRect(artImg.transform, 0, -20, 220, 50, PRI);
+            bub.anchorMin = bub.anchorMax = new Vector2(0.5f, 0.3f);
+            var go = bub.gameObject;
+            var txt = go.AddComponent<Text>();
+            txt.text = text; txt.font = Font.CreateDynamicFontFromOSFont("Arial", 14);
+            txt.fontSize = 26; txt.color = Color.white; txt.alignment = TextAnchor.MiddleCenter;
+            txt.horizontalOverflow = HorizontalWrapMode.Overflow;
+            go.transform.localScale = Vector3.zero;
+            float t = 0;
+            while (t < 0.3f) {
+                t += Time.deltaTime;
+                float s = t < 0.2f ? (t / 0.2f) * 1.15f : 1.15f - (t - 0.2f) / 0.1f * 0.15f;
+                go.transform.localScale = Vector3.one * s;
+                yield return null;
+            }
+            go.transform.localScale = Vector3.one;
+        }
+
+        RectTransform MkRect(Transform parent, float x, float y, float w, float h, Color col)
+        {
+            var go = new GameObject("_a", typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(parent, false);
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = new Vector2(x, y);
+            rt.sizeDelta = new Vector2(w, h);
+            go.GetComponent<Image>().color = col;
+            go.GetComponent<Image>().raycastTarget = false;
+            animObjs.Add(go);
+            return rt;
+        }
+
+        void ClearAnimObjs()
+        {
+            foreach (var go in animObjs) if (go != null) Object.Destroy(go);
+            animObjs.Clear();
+        }
+
+        // --- REFRESH ---
+        void RefreshCards()
+        {
+            string[] traitIds = { "size", "year", "weight", "textLanguage" };
             for (int i = 0; i < 4 && i < gs.Config.tools.Count; i++)
             {
-                bool sel = tid != null && gs.Config.tools[i].id == tid;
-                bool used = gs.UsedTools.Contains(gs.Config.tools[i].id);
-                toolBg[i].color = used ? DIS : sel ? PRI : SEC;
+                var tool = gs.Config.tools[i];
+                bool used = gs.UsedTools.Contains(tool.id);
+                cardBg[i].color = used ? Cv(.92f) : CARD;
+                if (used && gs.Art != null)
+                {
+                    cardResult[i].text = gs.Art.traits.Get(tool.reveals) + " \u2713";
+                    cardResult[i].color = ACCENT;
+                }
+                else
+                {
+                    bool sel = gs.SelectedTool == tool.id;
+                    cardResult[i].text = sel ? "отпустите!" : "тап!";
+                    cardResult[i].color = sel ? RED : T3;
+                }
             }
-            hintT.gameObject.SetActive(tid != null);
-            zoneDescT.gameObject.SetActive(tid == null);
-            if (tid != null) hintT.text = "Нажмите на артефакт для замера";
         }
 
         public void UpdateTimer()
@@ -120,41 +346,66 @@ namespace History
             timerT.color = gs.TimeLeft < 10 ? RED : T1;
         }
 
-        void RefreshNote()
-        {
-            string[] ids = { "material", "size", "weight", "year", "textLanguage" };
-            var a = gs.Art;
-            if (a == null) return;
-            for (int i = 0; i < 5; i++)
-            {
-                bool rev = gs.Revealed.ContainsKey(ids[i]) && gs.Revealed[ids[i]];
-                noteVal[i].text = rev ? a.traits.Get(ids[i]) : "\u2014";
-                noteVal[i].color = rev ? T1 : T3;
-            }
-        }
-
         public override void Refresh()
         {
             var a = gs.Art;
             if (a == null) return;
             counterT.text = "Артефакт " + (gs.ArtIdx + 1) + " / " + gs.Total;
             placedT.text = "Размещено: " + gs.PlacedN;
-            artNameT.text = a.name;
             sideIdx = 0;
-            ShowSide();
-            for (int i = 0; i < 4 && i < gs.Config.tools.Count; i++)
-            {
-                bool used = gs.UsedTools.Contains(gs.Config.tools[i].id);
-                toolBg[i].color = used ? DIS : SEC;
-                toolBtn[i].interactable = !used;
-            }
-            hintT.gameObject.SetActive(false);
-            zoneDescT.gameObject.SetActive(true);
-            RefreshNote();
+            ShowSide(false);
+            RefreshCards();
             gs.OnTrait -= OnTraitReveal;
             gs.OnTrait += OnTraitReveal;
         }
 
-        void OnTraitReveal(string t, string v) { RefreshNote(); }
+        void OnTraitReveal(string t, string v) { RefreshCards(); }
+    }
+
+    // --- DRAG COMPONENT FOR TOOL CARDS ---
+    public class ToolCardDrag : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
+    {
+        public int toolIdx;
+        public ExamineScreen examScreen;
+        GameObject ghost;
+
+        public void OnBeginDrag(PointerEventData e)
+        {
+            examScreen.OnDragStart(toolIdx);
+            ghost = new GameObject("Ghost", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
+            ghost.transform.SetParent(transform.root, false);
+            ghost.transform.SetAsLastSibling();
+            var img = ghost.GetComponent<Image>();
+            var src = GetComponentInChildren<Image>();
+            if (src != null && src.sprite != null) { img.sprite = src.sprite; img.preserveAspect = true; }
+            else img.color = new Color(.3f, .3f, .3f, .6f);
+            ghost.GetComponent<RectTransform>().sizeDelta = new Vector2(90, 90);
+            ghost.GetComponent<CanvasGroup>().blocksRaycasts = false;
+            ghost.GetComponent<CanvasGroup>().alpha = 0.75f;
+            ghost.transform.position = e.position;
+        }
+
+        public void OnDrag(PointerEventData e)
+        {
+            if (ghost != null) ghost.transform.position = e.position;
+        }
+
+        public void OnEndDrag(PointerEventData e)
+        {
+            if (ghost != null) Destroy(ghost);
+            examScreen.OnDragEnd(toolIdx);
+        }
+    }
+
+    // --- DROP ZONE ON ARTIFACT ---
+    public class ToolDropZone : MonoBehaviour, IDropHandler
+    {
+        public System.Action<string> onDrop;
+        public void OnDrop(PointerEventData e)
+        {
+            var gs = GameState.I;
+            if (gs != null && gs.SelectedTool != null)
+                onDrop?.Invoke(gs.SelectedTool);
+        }
     }
 }
