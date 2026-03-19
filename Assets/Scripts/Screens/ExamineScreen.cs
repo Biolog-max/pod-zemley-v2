@@ -23,9 +23,9 @@ namespace History
         {
             // ===== TOP BAR =====
             Img(p, 0, 80, Width, 55, new Color(0,0,0,.3f));
-            timerT   = Txt(p, "1:00", Pad, 84, 150, 46, 30, Color.white);
-            counterT = Txt(p, "", 0, 84, Width, 46, 20, new Color(1,1,1,.7f), TextAnchor.MiddleCenter);
-            placedT  = Txt(p, "", Width-280, 84, 240, 46, 16, new Color(1,1,1,.5f), TextAnchor.MiddleRight);
+            timerT   = Txt(p, "1:00", Pad, 84, 150, 46, 50, Color.black);
+            counterT = Txt(p, "", 0, 84, Width, 46, 30, Color.black, TextAnchor.MiddleCenter);
+            placedT  = Txt(p, "", Width-280, 84, 240, 46, 36, Color.black, TextAnchor.MiddleRight);
 
             // ===== DESK =====
             Img(p, 0, 135, Width, 1785, new Color(.42f,.30f,.18f));
@@ -36,7 +36,7 @@ namespace History
             artImg = SprImg(p, 60, 150, Width-120, 620, null);
             artRT = artImg.GetComponent<RectTransform>();
             artImg.GetComponent<Image>().raycastTarget = true;
-
+            
             // anim layer
             var al = new GameObject("Anim", typeof(RectTransform));
             al.transform.SetParent(p, false); Pos(al, 60, 150, Width-120, 620);
@@ -49,15 +49,23 @@ namespace History
             dz.gameObject.AddComponent<Button>().onClick.AddListener(OnArtTapped);
 
             // ===== SIDE NAV (explicit buttons) =====
-            Img(p, 50, 770, Width-100, 55, new Color(0,0,0,.35f));
-            Btn(p, "\u25C0  Перевернуть", 60, 775, Width/2-70, 45, 18, false, ()=>SwipeSide(-1))
-                .GetComponent<Image>().color = new Color(1,1,1,.12f);
-            sideNameT = Txt(p, "", Width/2, 775, 10, 45, 16, Color.white, TextAnchor.MiddleCenter);
-            Btn(p, "Перевернуть  \u25B6", Width/2+10, 775, Width/2-70, 45, 18, false, ()=>SwipeSide(1))
-                .GetComponent<Image>().color = new Color(1,1,1,.12f);
+            // Левая кнопка "Перевернуть"
+            var leftBtn = Btn(p, "\u25C0 Перевернуть", 60, 775, 200, 60, 26, false, () => SwipeSide(-1));
+            leftBtn.GetComponent<Image>().color = new Color(0.8f, 0.8f, 0.8f, 0.7f);
+
+            // Центральный фон и текст
+            // Увеличиваем ширину центрального фона до 240
+            var centerBg = Img(p, Width / 2 - 120, 775, 240, 60, new Color(0.9f, 0.9f, 0.9f, 0.5f)); // ширина 240, центрирование X = Width/2 - 240/2
+            // Обновляем рассчитанную X-позицию текста под новую ширину
+            float calculatedTextX = (Width / 2.0f) - (240.0f / 2.0f);
+            sideNameT = Txt(p, "", calculatedTextX, 775, 240, 60, 25, Color.black, TextAnchor.MiddleCenter); // ширина 240, высота 60, размер шрифта 25
+
+            // Правая кнопка "Перевернуть"
+            var rightBtn = Btn(p, "Перевернуть \u25B6", Width - 270, 775, 200, 60, 26, false, () => SwipeSide(1));
+            rightBtn.GetComponent<Image>().color = new Color(0.8f, 0.8f, 0.8f, 0.7f);
 
             // zone description
-            zoneDescT = Txt(p, "", Pad+5, 830, CW-10, 38, 16, new Color(.85f,.80f,.70f));
+            zoneDescT = Txt(p, "", Pad+5, 830, CW-10, 38, 25, new Color(.85f,.80f,.70f));
 
             // ===== TOOLS on desk =====
             float tw = (Width - Pad*2 - 30) / 4;
@@ -68,11 +76,12 @@ namespace History
             {
                 float tx = Pad + i*(tw+10);
                 var slot = new GameObject("T"+i, typeof(RectTransform), typeof(Image));
-                slot.transform.SetParent(p, false); Pos(slot, tx, 878, tw, 90);
+                slot.transform.SetParent(p, false); Pos(slot, tx, 908, tw, 90);
                 slot.GetComponent<Image>().color = new Color(.52f,.40f,.24f);
                 toolSlots[i] = slot;
                 if (icons != null) SprImg(slot.transform, (tw-44)/2, 5, 44, 44, icons[i]);
-                toolLabels[i] = Txt(slot.transform, "", 0, 52, tw, 32, 13, new Color(.9f,.85f,.75f), TextAnchor.MiddleCenter);
+                // Увеличиваем размер шрифта и делаем цвет более контрастным (черный)
+                toolLabels[i] = Txt(slot.transform, "", 0, 52, tw, 32, 25, Color.white, TextAnchor.MiddleCenter); // Было 13, стало 18; цвет .9f,.85f,.75f -> black
                 var btn = slot.AddComponent<Button>();
                 int idx = i;
                 btn.onClick.AddListener(()=>OnToolTap(idx));
@@ -81,25 +90,23 @@ namespace History
             }
 
             // ===== NOTEBOOK (always visible, compact) =====
-            Img(p, Pad, 980, CW, 210, new Color(.92f,.90f,.85f,.9f));
+            Img(p, Pad, 1040, CW, 210, new Color(.92f,.90f,.85f,.9f));
             string[] labels = {"Материал:","Размер:","Вес:","Год:","Язык:"};
             for (int i = 0; i < 5; i++)
             {
                 float nx = Pad + (i < 3 ? 0 : CW/2);
-                float ny = 990 + (i < 3 ? i*42 : (i-3)*42);
+                float ny = 1010 + (i < 3 ? i*42 : (i-3)*42);
                 float nw = i < 3 ? CW/2 - 10 : CW/2 - 10;
-                Txt(p, labels[i], nx+10, ny, 140, 35, 17, new Color(.5f,.45f,.35f));
-                noteVal[i] = Txt(p, "\u2014", nx+155, ny, nw-165, 35, 17, new Color(.25f,.18f,.10f));
-                if (i < 2 || (i >= 3 && i < 4))
-                    Img(p, nx+10, ny+34, nw-20, 1, new Color(.82f,.78f,.70f));
+                Txt(p, labels[i], nx+10, ny+50, 140, 35, 27, new Color(.5f,.45f,.35f));
+                noteVal[i] = Txt(p, "\u2014", nx+155, ny+50, nw-165, 35, 30, new Color(.25f,.18f,.10f));
             }
 
             // ===== ACTION BUTTONS (explicit, always visible) =====
-            var b1 = Btn(p, "Справочник", Pad, 0, CW/3-5, 80, 18, false, ()=>gs.OpenRef());
+            var b1 = Btn(p, "Справочник", Pad, 0, CW/3-5, 80, 30, false, ()=>gs.OpenRef());
             PosBot(b1.gameObject, Pad, 60, CW/3-5, 80);
-            var b2 = Btn(p, "Пропустить", Pad+CW/3+5, 0, CW/3-10, 80, 18, false, ()=>gs.SkipArt());
+            var b2 = Btn(p, "Пропустить", Pad+CW/3+5, 0, CW/3-10, 80, 30, false, ()=>gs.SkipArt());
             PosBot(b2.gameObject, Pad+CW/3+5, 60, CW/3-10, 80);
-            var b3 = Btn(p, "В МУЗЕЙ \u2192", Pad+CW*2/3+5, 0, CW/3-5, 80, 22, true, ()=>gs.GoMuseum());
+            var b3 = Btn(p, "В МУЗЕЙ \u2192", Pad+CW*2/3+5, 0, CW/3-5, 80, 35, true, ()=>gs.GoMuseum());
             PosBot(b3.gameObject, Pad+CW*2/3+5, 60, CW/3-5, 80);
 
             gs.OnToolPicked += (_)=>RefreshTools();
@@ -191,15 +198,233 @@ namespace History
         }
         IEnumerator AScales(string r)
         {
-            var pole=M(0,-50,6,150);pole.GetComponent<Image>().color=new Color(.45f,.35f,.2f);
-            var beam=M(0,40,250,5);beam.GetComponent<Image>().color=new Color(.55f,.45f,.2f);
-            var lp=M(-95,-5,65,5);lp.GetComponent<Image>().color=new Color(.5f,.4f,.15f);
-            var rp=M(95,-5,65,5);rp.GetComponent<Image>().color=new Color(.5f,.4f,.15f);
-            float t=0;while(t<1.2f){t+=Time.deltaTime;float d=1f-Mathf.Pow(t/1.2f,.6f);
-            float a=Mathf.Sin(t*6f)*18f*d;beam.localRotation=Quaternion.Euler(0,0,a);
-            float o=Mathf.Sin(t*6f)*30f*d;lp.anchoredPosition=new Vector2(-95,-5-o);rp.anchoredPosition=new Vector2(95,-5+o);yield return null;}
-            beam.localRotation=Quaternion.Euler(0,0,-3);
-            yield return Bub(r);yield return new WaitForSeconds(1f);
+            // --- 1. Создание заднего фона для весов ---
+
+            // Основной фон (темный полупрозрачный прямоугольник)
+            var bgPanel = M(0, 0, 500, 350);
+            bgPanel.GetComponent<Image>().color = new Color(0.15f, 0.12f, 0.08f, 0f);
+
+            // Рамка вокруг фона
+            var bgBorder = M(0, 0, 510, 360);
+            bgBorder.GetComponent<Image>().color = new Color(0.4f, 0.35f, 0.25f, 0f);
+
+            // Декоративные углы фона
+            var cornerTL = M(-245, 170, 20, 20);
+            cornerTL.GetComponent<Image>().color = new Color(0.5f, 0.45f, 0.35f, 0f);
+            var cornerTR = M(245, 170, 20, 20);
+            cornerTR.GetComponent<Image>().color = new Color(0.5f, 0.45f, 0.35f, 0f);
+            var cornerBL = M(-245, -170, 20, 20);
+            cornerBL.GetComponent<Image>().color = new Color(0.5f, 0.45f, 0.35f, 0f);
+            var cornerBR = M(245, -170, 20, 20);
+            cornerBR.GetComponent<Image>().color = new Color(0.5f, 0.45f, 0.35f, 0f);
+
+            // Анимация появления фона
+            float bgAppearDuration = 0.4f;
+            float t = 0f;
+            while (t < bgAppearDuration)
+            {
+                t += Time.deltaTime;
+                float progress = Mathf.SmoothStep(0f, 1f, t / bgAppearDuration);
+                SetAlpha(bgPanel, progress * 0.85f);
+                SetAlpha(bgBorder, progress * 0.6f);
+                SetAlpha(cornerTL, progress * 0.7f);
+                SetAlpha(cornerTR, progress * 0.7f);
+                SetAlpha(cornerBL, progress * 0.7f);
+                SetAlpha(cornerBR, progress * 0.7f);
+                yield return null;
+            }
+
+            // Основание (подставка)
+            var basePlate = M(0, -140, 60, 15);
+            basePlate.GetComponent<Image>().color = new Color(.35f, .28f, .18f, 0f);
+
+            // Стойка (вертикальная опора)
+            var pole = M(0, -50, 10, 170);
+            pole.GetComponent<Image>().color = new Color(.4f, .32f, .2f, 0f);
+
+            // Декоративный элемент на стойке
+            var poleDecor = M(0, 35, 16, 16);
+            poleDecor.GetComponent<Image>().color = new Color(.5f, .4f, .25f, 0f);
+
+            // Балка (коромысло)
+            var beam = M(0, 45, 280, 10);
+            beam.GetComponent<Image>().color = new Color(.65f, .55f, .35f, 0f);
+
+            // Ось вращения (центральный элемент)
+            var pivot = M(0, 45, 18, 18);
+            pivot.GetComponent<Image>().color = new Color(.25f, .25f, .25f, 0f);
+
+            // Цепи/подвесы для чаш
+            var leftChain = M(-95, 20, 2, 30);
+            leftChain.GetComponent<Image>().color = new Color(.5f, .45f, .35f, 0f);
+            var rightChain = M(95, 20, 2, 30);
+            rightChain.GetComponent<Image>().color = new Color(.5f, .45f, .35f, 0f);
+
+            // Левая чаша
+            var leftPan = M(-95, -5, 70, 12);
+            leftPan.GetComponent<Image>().color = new Color(.55f, .45f, .25f, 0f);
+
+            // Правая чаша
+            var rightPan = M(95, -5, 70, 12);
+            rightPan.GetComponent<Image>().color = new Color(.55f, .45f, .25f, 0f);
+
+            // Тени под чашами
+            var leftShadow = M(-95, -25, 60, 8);
+            leftShadow.GetComponent<Image>().color = new Color(0, 0, 0, 0f);
+            var rightShadow = M(95, -25, 60, 8);
+            rightShadow.GetComponent<Image>().color = new Color(0, 0, 0, 0f);
+
+            // --- 3. Анимация появления весов ---
+            float appearDuration = 0.6f;
+            t = 0f;
+
+            while (t < appearDuration)
+            {
+                t += Time.deltaTime;
+                float progress = Mathf.SmoothStep(0f, 1f, t / appearDuration);
+
+                SetAlpha(basePlate, progress * 0.9f);
+                SetAlpha(pole, progress * 0.9f);
+                SetAlpha(poleDecor, progress * 0.8f);
+                SetAlpha(beam, progress * 0.9f);
+                SetAlpha(pivot, progress * 0.95f);
+                SetAlpha(leftChain, progress * 0.85f);
+                SetAlpha(rightChain, progress * 0.85f);
+                SetAlpha(leftPan, progress * 0.85f);
+                SetAlpha(rightPan, progress * 0.85f);
+                SetAlpha(leftShadow, progress * 0.3f);
+                SetAlpha(rightShadow, progress * 0.3f);
+
+                yield return null;
+            }
+
+            // --- 4. Анимация взвешивания ---
+            yield return new WaitForSeconds(0.3f);
+
+            float scaleDuration = 2.0f;
+            t = 0f;
+            float oscillationSpeed = 5f;
+            float initialAmplitude = 20f;
+            float dampingFactor = 1.5f;
+            float weightDifference = 0.25f;
+
+            while (t < scaleDuration)
+            {
+                t += Time.deltaTime;
+                float timeProgress = t / scaleDuration;
+                float amplitude = initialAmplitude * Mathf.Exp(-dampingFactor * timeProgress);
+                float baseAngle = -weightDifference * 18f;
+                float oscillationAngle = Mathf.Sin(t * oscillationSpeed) * amplitude;
+                float totalAngle = baseAngle + oscillationAngle;
+
+                beam.localRotation = Quaternion.Euler(0, 0, totalAngle);
+
+                float armLength = 95f;
+                float angleRad = totalAngle * Mathf.Deg2Rad;
+                float leftYOffset = -Mathf.Sin(angleRad) * armLength;
+                float rightYOffset = Mathf.Sin(angleRad) * armLength;
+
+                leftPan.anchoredPosition = new Vector2(-95, -5f + leftYOffset);
+                rightPan.anchoredPosition = new Vector2(95, -5f + rightYOffset);
+                leftChain.anchoredPosition = new Vector2(-95, 20f + leftYOffset * 0.5f);
+                rightChain.anchoredPosition = new Vector2(95, 20f + rightYOffset * 0.5f);
+
+                float leftShadowAlpha = 0.3f * (1f - Mathf.Abs(leftYOffset) / 30f);
+                float rightShadowAlpha = 0.3f * (1f - Mathf.Abs(rightYOffset) / 30f);
+                SetAlpha(leftShadow, Mathf.Max(0.1f, leftShadowAlpha));
+                SetAlpha(rightShadow, Mathf.Max(0.1f, rightShadowAlpha));
+
+                yield return null;
+            }
+
+            // --- 5. Финальная стабильная позиция ---
+            float finalAngle = -weightDifference * 18f;
+            beam.localRotation = Quaternion.Euler(0, 0, finalAngle);
+
+            float finalAngleRad = finalAngle * Mathf.Deg2Rad;
+            float finalLeftY = -Mathf.Sin(finalAngleRad) * 95f;
+            float finalRightY = Mathf.Sin(finalAngleRad) * 95f;
+
+            leftPan.anchoredPosition = new Vector2(-95, -5f + finalLeftY);
+            rightPan.anchoredPosition = new Vector2(95, -5f + finalRightY);
+            leftChain.anchoredPosition = new Vector2(-95, 20f + finalLeftY * 0.5f);
+            rightChain.anchoredPosition = new Vector2(95, 20f + finalRightY * 0.5f);
+
+            // --- 6. Визуальный эффект завершения ---
+            float pulseDuration = 0.5f;
+            t = 0f;
+            while (t < pulseDuration)
+            {
+                t += Time.deltaTime;
+                float pulse = 1f + Mathf.Sin(t * 12f) * 0.1f;
+                pivot.localScale = new Vector3(pulse, pulse, 1);
+                yield return null;
+            }
+            pivot.localScale = Vector3.one;
+
+            // --- 7. Отображение результата ---
+            yield return new WaitForSeconds(0.2f);
+            yield return BubEnhanced(r);
+
+            // --- 8. Плавное исчезновение всех элементов ---
+            float fadeDuration = 0.5f;
+            t = 0f;
+            while (t < fadeDuration)
+            {
+                t += Time.deltaTime;
+                float alpha = Mathf.SmoothStep(1f, 0f, t / fadeDuration);
+
+                SetAlpha(bgPanel, alpha * 0.85f);
+                SetAlpha(bgBorder, alpha * 0.6f);
+                SetAlpha(cornerTL, alpha * 0.7f);
+                SetAlpha(cornerTR, alpha * 0.7f);
+                SetAlpha(cornerBL, alpha * 0.7f);
+                SetAlpha(cornerBR, alpha * 0.7f);
+                SetAlpha(basePlate, alpha * 0.9f);
+                SetAlpha(pole, alpha * 0.9f);
+                SetAlpha(poleDecor, alpha * 0.8f);
+                SetAlpha(beam, alpha * 0.9f);
+                SetAlpha(pivot, alpha * 0.95f);
+                SetAlpha(leftChain, alpha * 0.85f);
+                SetAlpha(rightChain, alpha * 0.85f);
+                SetAlpha(leftPan, alpha * 0.85f);
+                SetAlpha(rightPan, alpha * 0.85f);
+                SetAlpha(leftShadow, alpha * 0.3f);
+                SetAlpha(rightShadow, alpha * 0.3f);
+
+                yield return null;
+            }
+
+            // --- 9. Очистка ---
+            Object.Destroy(bgPanel.gameObject);
+            Object.Destroy(bgBorder.gameObject);
+            Object.Destroy(cornerTL.gameObject);
+            Object.Destroy(cornerTR.gameObject);
+            Object.Destroy(cornerBL.gameObject);
+            Object.Destroy(cornerBR.gameObject);
+            Object.Destroy(basePlate.gameObject);
+            Object.Destroy(pole.gameObject);
+            Object.Destroy(poleDecor.gameObject);
+            Object.Destroy(beam.gameObject);
+            Object.Destroy(pivot.gameObject);
+            Object.Destroy(leftChain.gameObject);
+            Object.Destroy(rightChain.gameObject);
+            Object.Destroy(leftPan.gameObject);
+            Object.Destroy(rightPan.gameObject);
+            Object.Destroy(leftShadow.gameObject);
+            Object.Destroy(rightShadow.gameObject);
+
+            yield return new WaitForSeconds(0.3f);
+        }
+
+        // Вспомогательная функция для установки прозрачности
+        void SetAlpha(RectTransform rt, float alpha)
+        {
+            if (rt != null && rt.GetComponent<Image>() != null)
+            {
+                Color c = rt.GetComponent<Image>().color;
+                rt.GetComponent<Image>().color = new Color(c.r, c.g, c.b, alpha);
+            }
         }
         IEnumerator ACarbon(string r)
         {
@@ -517,7 +742,8 @@ namespace History
             if(!gs.TimerOn||timerT==null)return;
             int m=(int)(gs.TimeLeft/60),s=(int)(gs.TimeLeft%60);
             timerT.text=m+":"+s.ToString("D2");
-            timerT.color=gs.TimeLeft<10?new Color(1,.3f,.3f):Color.white;
+            // Измените Color.white на Color.black
+            timerT.color=gs.TimeLeft<10?new Color(1,.3f,.3f):Color.black; // Теперь по умолчанию черный
         }
         public override void Refresh()
         {
